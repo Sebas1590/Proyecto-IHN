@@ -47,6 +47,9 @@ interface SaleDao {
     )
     fun observeRecent(limit: Int): Flow<List<SaleEntity>>
 
+    @Query("SELECT EXISTS(SELECT 1 FROM sales WHERE productId = :productId)")
+    suspend fun hasSalesForProduct(productId: Long): Boolean
+
     @Insert
     suspend fun insert(sale: SaleEntity): Long
 

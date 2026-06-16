@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.practica_desarrollomovil.domain.model.Product
 import com.example.practica_desarrollomovil.domain.model.ProductUnit
 import com.example.practica_desarrollomovil.domain.repository.ProductRepository
+import com.example.practica_desarrollomovil.domain.repository.SaleRepository
 import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,12 +30,14 @@ data class ProductFormUiState(
     val imageUri: String? = null,
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
+    val hasSales: Boolean = false,
     val errorMessage: String? = null,
     val savedSuccessfully: Boolean = false
 )
 
 class ProductFormViewModel(
     private val productRepository: ProductRepository,
+    private val saleRepository: SaleRepository,
     productId: Long?
 ) : ViewModel() {
 
@@ -49,6 +52,7 @@ class ProductFormViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val product = productRepository.getProduct(id)
+            val hasSales = saleRepository.hasSalesForProduct(id)
             if (product != null) {
                 _uiState.update {
                     it.copy(
@@ -58,6 +62,7 @@ class ProductFormViewModel(
                         pricePerUnit = product.pricePerUnit.toString(),
                         totalInvestment = product.totalInvestment.toString(),
                         imageUri = product.imageUri,
+                        hasSales = hasSales,
                         isLoading = false
                     )
                 }
@@ -70,13 +75,47 @@ class ProductFormViewModel(
     }
 
     fun onNameChange(value: String) = _uiState.update { it.copy(name = value) }
-    fun onStockChange(value: String) = _uiState.update { it.copy(stock = value) }
+    
+    fun onStockChange(value: String) = _uiState.update { 
+        val newStock = value.toDoubleOrNull() ?: 0.0
+        val currentTotal = it.totalInvestment.toDoubleOrNull() ?: 0.0
+        val currentUnitCost = it.unitCost.toDoubleOrNull() ?: 0.0
+        
+        val updatedUnitCost = if (it.investmentMode == InvestmentMode.TOTAL && newStock > 0) {
+            String.format(Locale.US, "%.2f", currentTotal / newStock)
+        } else it.unitCost
+
+        val updatedTotal = if (it.investmentMode == InvestmentMode.UNIT_COST) {
+            String.format(Locale.US, "%.2f", currentUnitCost * newStock)
+        } else it.totalInvestment
+
+        it.copy(stock = value, unitCost = updatedUnitCost, totalInvestment = updatedTotal) 
+    }
+
     fun onUnitChange(unit: ProductUnit) = _uiState.update { it.copy(unit = unit) }
     fun onPriceChange(value: String) = _uiState.update { it.copy(pricePerUnit = value) }
     
     fun onInvestmentModeChange(mode: InvestmentMode) = _uiState.update { it.copy(investmentMode = mode) }
-    fun onUnitCostChange(value: String) = _uiState.update { it.copy(unitCost = value) }
-    fun onTotalInvestmentChange(value: String) = _uiState.update { it.copy(totalInvestment = value) }
+    
+    fun onUnitCostChange(value: String) = _uiState.update { 
+        val unitCost = value.toDoubleOrNull() ?: 0.0
+        val stock = it.stock.toDoubleOrNull() ?: 0.0
+        val total = unitCost * stock
+        it.copy(
+            unitCost = value,
+            totalInvestment = if (it.investmentMode == InvestmentMode.UNIT_COST) String.format(Locale.US, "%.2f", total) else it.totalInvestment
+        )
+    }
+
+    fun onTotalInvestmentChange(value: String) = _uiState.update { 
+        val total = value.toDoubleOrNull() ?: 0.0
+        val stock = it.stock.toDoubleOrNull() ?: 0.0
+        val unitCost = if (stock > 0) total / stock else 0.0
+        it.copy(
+            totalInvestment = value,
+            unitCost = if (it.investmentMode == InvestmentMode.TOTAL) String.format(Locale.US, "%.2f", unitCost) else it.unitCost
+        )
+    }
     
     fun onImageUriChange(uri: String?) = _uiState.update { it.copy(imageUri = uri) }
 
@@ -108,12 +147,17 @@ class ProductFormViewModel(
             return
         }
 
-        val totalRevenue = price * stock
-        if (finalInvestment > totalRevenue) {
-            _uiState.update { 
-                it.copy(errorMessage = "La inversión no puede ser mayor a la venta proyectada (S/ ${String.format(Locale.getDefault(), "%.2f", totalRevenue)})")
+        val isNew = state.productId == null
+        val shouldValidate = isNew || !state.hasSales
+
+        if (shouldValidate) {
+            val totalRevenue = price * stock
+            if (finalInvestment > totalRevenue && stock > 0) {
+                _uiState.update { 
+                    it.copy(errorMessage = "La inversión total (S/ ${String.format(Locale.getDefault(), "%.2f", finalInvestment)}) no puede ser mayor a la venta proyectada (S/ ${String.format(Locale.getDefault(), "%.2f", totalRevenue)})")
+                }
+                return
             }
-            return
         }
 
         viewModelScope.launch {
@@ -145,11 +189,12 @@ class ProductFormViewModel(
 
     class Factory(
         private val productRepository: ProductRepository,
+        private val saleRepository: SaleRepository,
         private val productId: Long?
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return ProductFormViewModel(productRepository, productId) as T
+            return ProductFormViewModel(productRepository, saleRepository, productId) as T
         }
     }
 }

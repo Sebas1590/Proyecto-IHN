@@ -48,6 +48,7 @@ class AppContainer(context: Context) {
 
     fun productFormViewModelFactory(productId: Long?) = ProductFormViewModel.Factory(
         productRepository = productRepository,
+        saleRepository = saleRepository,
         productId = productId
     )
 

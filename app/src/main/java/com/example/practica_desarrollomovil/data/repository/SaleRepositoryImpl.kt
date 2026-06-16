@@ -94,6 +94,9 @@ class SaleRepositoryImpl(
     override fun observeAllSales(): Flow<List<Sale>> =
         saleDao.observeAll().map { list -> list.map(SaleMapper::toDomain) }
 
+    override suspend fun hasSalesForProduct(productId: Long): Boolean =
+        saleDao.hasSalesForProduct(productId)
+
     override suspend fun registerSale(productId: Long, quantity: Double): Result<Sale> {
         val product = productDao.getById(productId)
             ?: return Result.failure(IllegalArgumentException("Producto no encontrado"))

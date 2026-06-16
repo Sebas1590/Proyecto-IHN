@@ -11,6 +11,7 @@ interface SaleRepository {
     fun observeEarningsSummary(): Flow<EarningsSummary>
     fun observeRecentActivity(limit: Int = 10): Flow<List<RecentActivity>>
     fun observeAllSales(): Flow<List<Sale>>
+    suspend fun hasSalesForProduct(productId: Long): Boolean
     suspend fun registerSale(productId: Long, quantity: Double): Result<Sale>
     suspend fun deleteSale(id: Long)
 }
