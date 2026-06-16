@@ -9,7 +9,7 @@
       se vea lo más grande y claro posible sin que Android lo recorte.
     -->
     <item
-        android:drawable="@drawable/logomenu_metamerca"
+        android:drawable="@drawable/logo_metamerca"
         android:gravity="center"
         android:top="4dp"
         android:bottom="4dp"
