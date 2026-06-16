@@ -138,18 +138,18 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             ActionTile(
-                label = "Registrar Venta",
-                icon = Icons.Default.Receipt,
-                color = ActionBlue,
-                modifier = Modifier.weight(1f),
-                onClick = onRegisterSale
-            )
-            ActionTile(
                 label = "Agregar Productos",
                 icon = Icons.Default.Inventory2,
                 color = ActionGreen,
                 modifier = Modifier.weight(1f),
                 onClick = onAddProduct
+            )
+            ActionTile(
+                label = "Registrar Venta",
+                icon = Icons.Default.Receipt,
+                color = ActionBlue,
+                modifier = Modifier.weight(1f),
+                onClick = onRegisterSale
             )
         }
 

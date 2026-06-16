@@ -238,7 +238,7 @@ fun ProductFormScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 4.dp, bottom = 12.dp),
-                placeholder = { Text("Ej. Zapatillas Deportivas") },
+                placeholder = { Text("Ej. Leche Gloria") },
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true
             )
