@@ -19,6 +19,7 @@ import com.example.practica_desarrollomovil.presentation.products.ProductsViewMo
 import com.example.practica_desarrollomovil.presentation.earnings.EarningsViewModel
 import com.example.practica_desarrollomovil.presentation.sales.RegisterSaleViewModel
 import com.example.practica_desarrollomovil.presentation.sales.SalesListViewModel
+import com.example.practica_desarrollomovil.presentation.sales.EditSaleViewModel
 
 class AppContainer(context: Context) {
 
@@ -60,6 +61,11 @@ class AppContainer(context: Context) {
     )
 
     fun salesListViewModelFactory() = SalesListViewModel.Factory(saleRepository)
+
+    fun editSaleViewModelFactory(saleId: Long) = EditSaleViewModel.Factory(
+        saleRepository = saleRepository,
+        saleId = saleId
+    )
 
     fun accessibilityViewModelFactory() = AccessibilityViewModel.Factory(
         accessibilityPreferences = accessibilityPreferences,

@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
@@ -67,7 +68,7 @@ fun SalesScreen(
     val viewModel = viewModel<SalesListViewModel>(factory = container.salesListViewModelFactory())
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     
-    var saleToDelete by remember { mutableStateOf<Sale?>(null) }
+    var saleToEdit by remember { mutableStateOf<Sale?>(null) }
     var saleToView by remember { mutableStateOf<Sale?>(null) }
     
     var showFromPicker by remember { mutableStateOf(false) }
@@ -125,20 +126,6 @@ fun SalesScreen(
         }
     }
 
-    saleToDelete?.let { sale ->
-        MetamercaAlertDialog(
-            onDismissRequest = { saleToDelete = null },
-            onConfirm = {
-                viewModel.deleteSale(sale.id)
-                saleToDelete = null
-            },
-            title = "Eliminar venta",
-            text = "¿Estás seguro de que deseas eliminar la venta de ${sale.productName}? Esta acción no se puede deshacer.",
-            confirmText = "Eliminar",
-            isDestructive = true
-        )
-    }
-
     saleToView?.let { sale ->
         MetamercaAlertDialog(
             onDismissRequest = { saleToView = null },
@@ -146,6 +133,17 @@ fun SalesScreen(
             title = "Detalle de venta",
             text = "Producto: ${sale.productName}\nCantidad: ${sale.quantity}\nTotal: ${CurrencyFormatter.formatSoles(sale.totalAmount, withSign = true)}\nFecha: ${DateTimeUtils.formatDateShort(sale.soldAtMillis)}",
             confirmText = "Cerrar"
+        )
+    }
+
+    saleToEdit?.let { sale ->
+        EditSaleDialog(
+            container = container,
+            saleId = sale.id,
+            onDismiss = { saleToEdit = null },
+            onSuccess = {
+                saleToEdit = null
+            }
         )
     }
 
@@ -239,10 +237,18 @@ fun SalesScreen(
                                 )
                             }
                             IconButton(onClick = { saleToView = sale }) {
-                                Icon(Icons.Default.Edit, contentDescription = null, tint = BrandBrown)
+                                Icon(
+                                    imageVector = Icons.Default.Visibility,
+                                    contentDescription = "Ver detalle",
+                                    tint = BrandBrown
+                                )
                             }
-                            IconButton(onClick = { saleToDelete = sale }) {
-                                Icon(Icons.Default.Delete, contentDescription = null, tint = CancelRed)
+                            
+                            // Solo permitir editar si el producto existe (productId != 0)
+                            if (sale.productId != 0L) {
+                                IconButton(onClick = { saleToEdit = sale }) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Editar venta", tint = BrandBrown)
+                                }
                             }
                         }
                     }
@@ -252,6 +258,74 @@ fun SalesScreen(
             }
         }
     }
+}
+
+@Composable
+private fun EditSaleDialog(
+    container: AppContainer,
+    saleId: Long,
+    onDismiss: () -> Unit,
+    onSuccess: () -> Unit
+) {
+    val viewModel = viewModel<EditSaleViewModel>(
+        key = "edit_sale_$saleId",
+        factory = container.editSaleViewModelFactory(saleId)
+    )
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    androidx.compose.runtime.LaunchedEffect(uiState.savedSuccessfully) {
+        if (uiState.savedSuccessfully) {
+            onSuccess()
+        }
+    }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Editar Venta", fontWeight = FontWeight.Bold, color = BrandBrown) },
+        text = {
+            Column {
+                Text(
+                    text = "Producto: ${uiState.sale?.productName ?: ""}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = BrandBrown
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = uiState.quantity,
+                    onValueChange = { viewModel.onQuantityChange(it) },
+                    label = { Text("Nueva Cantidad") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    isError = uiState.errorMessage != null,
+                    supportingText = {
+                        if (uiState.errorMessage != null) {
+                            Text(uiState.errorMessage!!, color = CancelRed)
+                        }
+                    }
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { viewModel.saveSale() },
+                enabled = !uiState.isSaving,
+                colors = ButtonDefaults.buttonColors(containerColor = BrandBrown),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text(if (uiState.isSaving) "Guardando..." else "Guardar", color = Color.White)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar", color = TextSecondary)
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(20.dp)
+    )
 }
 
 @Composable

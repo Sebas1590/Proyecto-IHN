@@ -56,12 +56,6 @@ class SalesListViewModel(
         filters.update { (from, _) -> from to value }
     }
 
-    fun deleteSale(id: Long) {
-        viewModelScope.launch {
-            saleRepository.deleteSale(id)
-        }
-    }
-
     class Factory(
         private val saleRepository: SaleRepository
     ) : ViewModelProvider.Factory {

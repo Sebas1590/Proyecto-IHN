@@ -3,6 +3,7 @@ package com.example.practica_desarrollomovil.data.local.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Update
 import com.example.practica_desarrollomovil.data.local.entity.SaleEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -52,6 +53,12 @@ interface SaleDao {
 
     @Insert
     suspend fun insert(sale: SaleEntity): Long
+
+    @Update
+    suspend fun update(sale: SaleEntity)
+
+    @Query("SELECT * FROM sales WHERE id = :id")
+    suspend fun getById(id: Long): SaleEntity?
 
     @Query("DELETE FROM sales WHERE id = :id")
     suspend fun deleteById(id: Long)

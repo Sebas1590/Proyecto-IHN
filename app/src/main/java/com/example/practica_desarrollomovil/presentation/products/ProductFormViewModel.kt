@@ -147,6 +147,12 @@ class ProductFormViewModel(
             return
         }
 
+        // Validación: Unidades no permiten decimales
+        if (state.unit == ProductUnit.UNID && stock % 1.0 != 0.0) {
+            _uiState.update { it.copy(errorMessage = "La unidad 'Unid.' no permite decimales") }
+            return
+        }
+
         val isNew = state.productId == null
         val shouldValidate = isNew || !state.hasSales
 

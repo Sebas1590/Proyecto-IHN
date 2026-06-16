@@ -97,6 +97,9 @@ class SaleRepositoryImpl(
     override suspend fun hasSalesForProduct(productId: Long): Boolean =
         saleDao.hasSalesForProduct(productId)
 
+    override suspend fun getSale(id: Long): Sale? =
+        saleDao.getById(id)?.let(SaleMapper::toDomain)
+
     override suspend fun registerSale(productId: Long, quantity: Double): Result<Sale> {
         val product = productDao.getById(productId)
             ?: return Result.failure(IllegalArgumentException("Producto no encontrado"))
@@ -141,7 +144,47 @@ class SaleRepositoryImpl(
         return Result.success(sale)
     }
 
-    override suspend fun deleteSale(id: Long) {
-        saleDao.deleteById(id)
+    override suspend fun updateSale(saleId: Long, newQuantity: Double): Result<Sale> {
+        val oldSaleEntity = saleDao.getById(saleId)
+            ?: return Result.failure(IllegalArgumentException("Venta no encontrada"))
+        
+        val productId = oldSaleEntity.productId 
+            ?: return Result.failure(IllegalArgumentException("No se puede editar ventas de productos eliminados"))
+            
+        val product = productDao.getById(productId)
+            ?: return Result.failure(IllegalArgumentException("Producto no encontrado"))
+
+        if (newQuantity <= 0) {
+            return Result.failure(IllegalArgumentException("Cantidad inválida"))
+        }
+
+        val availableStock = product.stock + oldSaleEntity.quantity
+        if (newQuantity > availableStock) {
+            return Result.failure(IllegalArgumentException("Stock insuficiente"))
+        }
+
+        val costPerUnit = if (product.stock + oldSaleEntity.quantity > 0) 
+            product.totalInvestment / (product.stock + oldSaleEntity.quantity) 
+            else 0.0
+            
+        val unitPrice = product.pricePerUnit
+        val totalAmount = unitPrice * newQuantity
+        val profitAmount = (unitPrice - costPerUnit) * newQuantity
+        val now = System.currentTimeMillis()
+
+        val updatedSaleEntity = oldSaleEntity.copy(
+            quantity = newQuantity,
+            unitPrice = unitPrice,
+            totalAmount = totalAmount,
+            profitAmount = profitAmount,
+            soldAtMillis = now // Opcional: ¿Actualizamos la fecha? El usuario dijo "editar ventas además de ver la información"
+        )
+        
+        saleDao.update(updatedSaleEntity)
+
+        val newStock = availableStock - newQuantity
+        productDao.updateStock(productId, newStock, now)
+
+        return Result.success(SaleMapper.toDomain(updatedSaleEntity))
     }
 }
