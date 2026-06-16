@@ -53,7 +53,8 @@ import com.example.practica_desarrollomovil.util.DateTimeUtils
 fun HomeScreen(
     viewModel: HomeViewModel,
     onRegisterSale: () -> Unit,
-    onAddProduct: () -> Unit
+    onAddProduct: () -> Unit,
+    onNavigateToEarnings: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val summary = uiState.summary
@@ -82,19 +83,26 @@ fun HomeScreen(
                 title = "VENTAS HOY",
                 value = summary.salesCountToday.toString(),
                 icon = Icons.Default.ShoppingCart,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onNavigateToEarnings() }
             )
             StatCard(
                 title = "INGRESO HOY",
                 value = CurrencyFormatter.formatSolesCompact(summary.incomeToday),
                 icon = Icons.Default.ShowChart,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onNavigateToEarnings() }
             )
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        MetamercaCard(containerColor = BrandOrange) {
+        MetamercaCard(
+            containerColor = BrandOrange,
+            modifier = Modifier.clickable { onNavigateToEarnings() }
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

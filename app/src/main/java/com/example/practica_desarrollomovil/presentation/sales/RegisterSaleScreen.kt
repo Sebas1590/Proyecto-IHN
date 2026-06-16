@@ -53,8 +53,20 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.Search
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 import com.example.practica_desarrollomovil.domain.model.Product
 import com.example.practica_desarrollomovil.presentation.components.MetamercaAlertDialog
+import com.example.practica_desarrollomovil.presentation.components.MetamercaSuccessDialog
 import com.example.practica_desarrollomovil.presentation.components.MetamercaCard
 import com.example.practica_desarrollomovil.presentation.components.MetamercaSnackbarHost
 import com.example.practica_desarrollomovil.presentation.theme.BrandBrown
@@ -74,6 +86,13 @@ fun RegisterSaleScreen(
     
     var showExitDialog by remember { mutableStateOf(false) }
     var showSaveDialog by remember { mutableStateOf(false) }
+    var showSuccessDialog by remember { mutableStateOf(false) }
+
+    // Estados para el Modal de selección de productos
+    var showProductModal by remember { mutableStateOf(false) }
+    var currentLinePickingId by remember { mutableStateOf<String?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+    val sheetState = rememberModalBottomSheetState()
 
     val handleBack = {
         if (uiState.lineItems.any { it.productId != -1L }) {
@@ -87,10 +106,87 @@ fun RegisterSaleScreen(
 
     LaunchedEffect(uiState.savedSuccessfully) {
         if (uiState.savedSuccessfully) {
-            snackbarHostState.showSnackbar("Venta registrada correctamente")
-            kotlinx.coroutines.delay(1000)
-            viewModel.consumeSaveSuccess()
-            onBack()
+            showSuccessDialog = true
+        }
+    }
+
+    if (showSuccessDialog) {
+        MetamercaSuccessDialog(
+            onDismissRequest = {
+                showSuccessDialog = false
+                viewModel.consumeSaveSuccess()
+                onBack()
+            },
+            onConfirm = {
+                showSuccessDialog = false
+                viewModel.consumeSaveSuccess()
+                onBack()
+            },
+            onSecondaryAction = {
+                showSuccessDialog = false
+                viewModel.consumeSaveSuccess()
+                // Se queda para registrar otra venta
+            },
+            title = "¡Venta registrada!",
+            text = "La venta se ha guardado correctamente en el sistema.",
+            confirmText = "Aceptar",
+            secondaryText = "Nueva venta"
+        )
+    }
+
+    // Modal de Selección de Productos
+    if (showProductModal) {
+        ModalBottomSheet(
+            onDismissRequest = { showProductModal = false; searchQuery = "" },
+            sheetState = sheetState,
+            containerColor = Color.White
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    "Seleccione un producto",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = BrandBrown
+                )
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    placeholder = { Text("Buscar producto...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+                
+                val filteredProducts = uiState.products.filter { 
+                    it.name.contains(searchQuery, ignoreCase = true) 
+                }
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(400.dp)
+                ) {
+                    items(filteredProducts) { product ->
+                        ProductSelectionItem(
+                            product = product,
+                            onClick = {
+                                currentLinePickingId?.let { lineId ->
+                                    viewModel.selectProduct(lineId, product.id)
+                                }
+                                showProductModal = false
+                                searchQuery = ""
+                            }
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -159,8 +255,9 @@ fun RegisterSaleScreen(
                         SaleLineRow(
                             line = line,
                             products = uiState.products,
-                            onProductSelected = { productId ->
-                                viewModel.selectProduct(line.id, productId)
+                            onPickProduct = {
+                                currentLinePickingId = line.id
+                                showProductModal = true
                             },
                             onQuantityChange = { qty -> viewModel.onQuantityChange(line.id, qty) },
                             onRemove = { viewModel.removeLineItem(line.id) }
@@ -269,16 +366,14 @@ fun RegisterSaleScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SaleLineRow(
     line: SaleLineItem,
     products: List<Product>,
-    onProductSelected: (Long) -> Unit,
+    onPickProduct: () -> Unit,
     onQuantityChange: (String) -> Unit,
     onRemove: () -> Unit
 ) {
-    var expanded by remember(line.id) { mutableStateOf(false) }
     val selectedProduct = products.find { it.id == line.productId }
 
     Row(
@@ -286,62 +381,45 @@ private fun SaleLineRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded },
-            modifier = Modifier.weight(1.4f)
-        ) {
-            OutlinedTextField(
-                value = selectedProduct?.name ?: "",
-                onValueChange = {},
-                readOnly = true,
-                modifier = Modifier
-                    .menuAnchor()
-                    .fillMaxWidth()
-                    .semantics { contentDescription = "Seleccionar producto" },
-                placeholder = { Text("Escriba un producto", color = TextSecondary) },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true
-            )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                if (products.isEmpty()) {
-                    DropdownMenuItem(
-                        text = { Text("No hay productos") },
-                        onClick = { expanded = false }
-                    )
-                } else {
-                    products.forEach { product ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    "${product.name} (${product.stock.toInt()} ${product.unit.label})",
-                                    color = BrandBrown
-                                )
-                            },
-                            onClick = {
-                                onProductSelected(product.id)
-                                expanded = false
-                            }
-                        )
-                    }
-                }
-            }
-        }
+        // Selector de Producto mejorado (Clickable TextField)
+        OutlinedTextField(
+            value = selectedProduct?.name ?: "",
+            onValueChange = {},
+            readOnly = true,
+            modifier = Modifier
+                .weight(1.5f)
+                .clickable { onPickProduct() },
+            enabled = false, // Para que el click lo maneje el modifier clickable
+            colors = OutlinedTextFieldDefaults.colors(
+                disabledTextColor = if (selectedProduct != null) BrandBrown else TextSecondary,
+                disabledBorderColor = BrandBrown,
+                disabledPlaceholderColor = TextSecondary
+            ),
+            placeholder = { 
+                Text(
+                    "Seleccione producto", 
+                    maxLines = 1, 
+                    style = MaterialTheme.typography.bodySmall
+                ) 
+            },
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true
+        )
 
         OutlinedTextField(
             value = line.quantity,
-            onValueChange = onQuantityChange,
+            onValueChange = { newValue ->
+                if (newValue.isEmpty() || newValue.matches(Regex("""^\d*\.?\d*$"""))) {
+                    onQuantityChange(newValue)
+                }
+            },
             modifier = Modifier
-                .weight(0.7f)
-                .semantics { contentDescription = "Cantidad del producto" },
-            placeholder = { Text("Cant.") },
+                .weight(0.9f),
+            placeholder = { Text("0.0") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             suffix = {
                 selectedProduct?.let {
-                    Text(it.unit.label, color = BrandBrown)
+                    Text(it.unit.label, color = BrandBrown, style = MaterialTheme.typography.labelSmall)
                 }
             },
             shape = RoundedCornerShape(12.dp),
@@ -351,12 +429,70 @@ private fun SaleLineRow(
         IconButton(
             onClick = onRemove,
             modifier = Modifier
-                .size(48.dp)
+                .size(44.dp)
                 .clip(RoundedCornerShape(10.dp))
                 .background(CancelRed)
-                .semantics { contentDescription = "Eliminar producto de la venta" }
         ) {
-            Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White)
+            Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
         }
+    }
+}
+
+@Composable
+private fun ProductSelectionItem(
+    product: Product,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(50.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(CreamBackground),
+            contentAlignment = Alignment.Center
+        ) {
+            if (product.imageUri != null) {
+                AsyncImage(
+                    model = product.imageUri,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(Icons.Default.ShoppingCart, contentDescription = null, tint = BrandBrown)
+            }
+        }
+        
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 12.dp)
+        ) {
+            Text(
+                text = product.name,
+                style = MaterialTheme.typography.titleMedium,
+                color = BrandBrown,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
+            )
+            Text(
+                text = "Stock: ${product.stock.toInt()} ${product.unit.label}",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary
+            )
+        }
+        
+        Text(
+            text = CurrencyFormatter.formatSoles(product.pricePerUnit),
+            style = MaterialTheme.typography.titleMedium,
+            color = BrandBrown,
+            fontWeight = FontWeight.Bold
+        )
     }
 }

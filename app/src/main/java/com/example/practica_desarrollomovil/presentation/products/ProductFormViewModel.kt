@@ -12,13 +12,19 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+enum class InvestmentMode {
+    TOTAL, UNIT_COST, NONE
+}
+
 data class ProductFormUiState(
     val productId: Long? = null,
     val name: String = "",
-    val stock: String = "0",
+    val stock: String = "",
     val unit: ProductUnit = ProductUnit.UNID,
-    val pricePerUnit: String = "0",
-    val totalInvestment: String = "0",
+    val pricePerUnit: String = "",
+    val investmentMode: InvestmentMode = InvestmentMode.TOTAL,
+    val unitCost: String = "",
+    val totalInvestment: String = "",
     val imageUri: String? = null,
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
@@ -66,7 +72,11 @@ class ProductFormViewModel(
     fun onStockChange(value: String) = _uiState.update { it.copy(stock = value) }
     fun onUnitChange(unit: ProductUnit) = _uiState.update { it.copy(unit = unit) }
     fun onPriceChange(value: String) = _uiState.update { it.copy(pricePerUnit = value) }
-    fun onInvestmentChange(value: String) = _uiState.update { it.copy(totalInvestment = value) }
+    
+    fun onInvestmentModeChange(mode: InvestmentMode) = _uiState.update { it.copy(investmentMode = mode) }
+    fun onUnitCostChange(value: String) = _uiState.update { it.copy(unitCost = value) }
+    fun onTotalInvestmentChange(value: String) = _uiState.update { it.copy(totalInvestment = value) }
+    
     fun onImageUriChange(uri: String?) = _uiState.update { it.copy(imageUri = uri) }
 
     fun saveProduct() {
@@ -76,20 +86,24 @@ class ProductFormViewModel(
             return
         }
 
-        val stock = state.stock.toDoubleOrNull()
-        val price = state.pricePerUnit.toDoubleOrNull()
-        val investment = state.totalInvestment.toDoubleOrNull()
+        val stock = state.stock.toDoubleOrNull() ?: 0.0
+        val price = state.pricePerUnit.toDoubleOrNull() ?: 0.0
+        
+        val finalInvestment = when (state.investmentMode) {
+            InvestmentMode.TOTAL -> state.totalInvestment.toDoubleOrNull() ?: 0.0
+            InvestmentMode.UNIT_COST -> {
+                val cost = state.unitCost.toDoubleOrNull() ?: 0.0
+                cost * stock
+            }
+            InvestmentMode.NONE -> 0.0
+        }
 
-        if (stock == null || stock < 0) {
+        if (stock < 0) {
             _uiState.update { it.copy(errorMessage = "Stock inválido") }
             return
         }
-        if (price == null || price < 0) {
+        if (price < 0) {
             _uiState.update { it.copy(errorMessage = "Precio inválido") }
-            return
-        }
-        if (investment == null || investment < 0) {
-            _uiState.update { it.copy(errorMessage = "Inversión inválida") }
             return
         }
 
@@ -103,7 +117,7 @@ class ProductFormViewModel(
                         stock = stock,
                         unit = state.unit,
                         pricePerUnit = price,
-                        totalInvestment = investment,
+                        totalInvestment = finalInvestment,
                         imageUri = state.imageUri
                     )
                 )

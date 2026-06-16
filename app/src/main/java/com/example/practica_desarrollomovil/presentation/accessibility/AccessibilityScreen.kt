@@ -17,7 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessibilityNew
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Visibility
@@ -60,37 +60,43 @@ fun AccessibilityScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
+        // Cabecera: Perfil
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                Icons.Default.AccessibilityNew,
+                Icons.Default.Person,
                 contentDescription = null,
                 tint = BrandBrown,
                 modifier = Modifier.size(28.dp)
             )
             Text(
-                text = "Accesibilidad",
+                text = "Mi perfil",
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = 8.dp)
+                    .padding(start = 8.dp),
+                fontWeight = FontWeight.Bold,
+                color = BrandBrown
             )
         }
 
         Text(
-            text = "Herramientas para mejorar la lectura y la interacción. Compatible con TalkBack.",
+            text = "Gestiona tu cuenta y personaliza la experiencia de uso de la aplicación.",
             style = MaterialTheme.typography.bodyMedium,
             color = TextSecondary,
-            modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
+            modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
         )
 
+        // Tarjeta de Sesión
         MetamercaCard {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     text = "Sesión activa",
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = BrandBrown
                 )
                 Text(
                     text = "Puedes cerrar sesión para volver a la pantalla de inicio.",
@@ -106,8 +112,23 @@ fun AccessibilityScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
+        // Cabecera: Accesibilidad
+        Text(
+            text = "Accesibilidad",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = BrandBrown
+        )
+        Text(
+            text = "Herramientas para mejorar la lectura y la interacción. Compatible con TalkBack.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextSecondary,
+            modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
+        )
+
+        // Herramientas de Accesibilidad
         AccessibilityTool.entries.forEach { tool ->
             AccessibilityToolCard(
                 tool = tool,

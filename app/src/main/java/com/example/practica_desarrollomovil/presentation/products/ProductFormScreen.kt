@@ -56,6 +56,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import androidx.compose.ui.platform.LocalContext
+import com.example.practica_desarrollomovil.util.FileUtils
+import com.example.practica_desarrollomovil.presentation.components.MetamercaSuccessDialog
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import com.example.practica_desarrollomovil.presentation.products.InvestmentMode
 import com.example.practica_desarrollomovil.domain.model.ProductUnit
 import com.example.practica_desarrollomovil.presentation.components.MetamercaAlertDialog
 import com.example.practica_desarrollomovil.presentation.components.MetamercaSnackbarHost
@@ -70,16 +83,39 @@ fun ProductFormScreen(
     viewModel: ProductFormViewModel,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        viewModel.onImageUriChange(uri?.toString())
+        uri?.let {
+            val localPath = FileUtils.saveImageToInternalStorage(context, it)
+            viewModel.onImageUriChange(localPath)
+        }
     }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap ->
+        bitmap?.let {
+            val uri = try {
+                val file = java.io.File(context.filesDir, "product_images").apply { if (!exists()) mkdirs() }
+                val targetFile = java.io.File(file, "cam_${java.util.UUID.randomUUID()}.jpg")
+                java.io.FileOutputStream(targetFile).use { out ->
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
+                }
+                Uri.fromFile(targetFile).toString()
+            } catch (e: Exception) { null }
+            viewModel.onImageUriChange(uri)
+        }
+    }
+
+    var showImageSourceDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     
     var showExitDialog by remember { mutableStateOf(false) }
     var showSaveDialog by remember { mutableStateOf(false) }
+    var showSuccessDialog by remember { mutableStateOf(false) }
 
     val handleBack = {
         if (uiState.name.isNotEmpty() || uiState.pricePerUnit.isNotEmpty()) {
@@ -93,11 +129,50 @@ fun ProductFormScreen(
 
     LaunchedEffect(uiState.savedSuccessfully) {
         if (uiState.savedSuccessfully) {
-            snackbarHostState.showSnackbar("Cambios guardados correctamente")
-            kotlinx.coroutines.delay(1000)
-            viewModel.consumeSaveSuccess()
-            onBack()
+            showSuccessDialog = true
         }
+    }
+
+    if (showSuccessDialog) {
+        MetamercaSuccessDialog(
+            onDismissRequest = {
+                showSuccessDialog = false
+                viewModel.consumeSaveSuccess()
+                onBack()
+            },
+            onConfirm = {
+                showSuccessDialog = false
+                viewModel.consumeSaveSuccess()
+                onBack()
+            },
+            onSecondaryAction = {
+                showSuccessDialog = false
+                viewModel.consumeSaveSuccess()
+                // Al no hacer onBack(), el usuario se queda en la pantalla.
+                // Como el viewModel limpia el estado al resetear (si lo implementamos), se queda listo.
+            },
+            title = "¡Producto registrado!",
+            text = "Tu artículo ya está disponible en el inventario.",
+            confirmText = "Aceptar",
+            secondaryText = "Agregar nuevo producto"
+        )
+    }
+
+    if (showImageSourceDialog) {
+        MetamercaAlertDialog(
+            onDismissRequest = {
+                showImageSourceDialog = false
+                imagePicker.launch("image/*")
+            },
+            onConfirm = {
+                showImageSourceDialog = false
+                cameraLauncher.launch(null)
+            },
+            title = "Seleccionar imagen",
+            text = "¿Deseas tomar una foto o elegir una de la galería?",
+            confirmText = "Cámara",
+            dismissText = "Galería"
+        )
     }
 
     if (showExitDialog) {
@@ -164,6 +239,7 @@ fun ProductFormScreen(
                     .fillMaxWidth()
                     .padding(top = 4.dp, bottom = 12.dp),
                 placeholder = { Text("Ej. Zapatillas Deportivas") },
+                shape = RoundedCornerShape(12.dp),
                 singleLine = true
             )
 
@@ -175,10 +251,12 @@ fun ProductFormScreen(
                     Text("Stock", style = MaterialTheme.typography.labelLarge)
                     OutlinedTextField(
                         value = uiState.stock,
-                        onValueChange = viewModel::onStockChange,
+                        onValueChange = { if (it.isEmpty() || it.matches(Regex("""^\d*\.?\d*$"""))) viewModel.onStockChange(it) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 4.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        shape = RoundedCornerShape(12.dp),
                         singleLine = true
                     )
                 }
@@ -191,28 +269,79 @@ fun ProductFormScreen(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-            Text("Precio x Unidad", style = MaterialTheme.typography.labelLarge)
+            Text("Precio de Venta x ${uiState.unit.label}", style = MaterialTheme.typography.labelLarge)
             OutlinedTextField(
                 value = uiState.pricePerUnit,
-                onValueChange = viewModel::onPriceChange,
+                onValueChange = { if (it.isEmpty() || it.matches(Regex("""^\d*\.?\d*$"""))) viewModel.onPriceChange(it) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 4.dp, bottom = 12.dp),
                 prefix = { Text("S/ ") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                shape = RoundedCornerShape(12.dp),
                 singleLine = true
             )
 
-            Text("Inversión Total", style = MaterialTheme.typography.labelLarge)
-            OutlinedTextField(
-                value = uiState.totalInvestment,
-                onValueChange = viewModel::onInvestmentChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp, bottom = 12.dp),
-                prefix = { Text("S/ ") },
-                singleLine = true
-            )
+            Text("Inversión / Costo de Compra", style = MaterialTheme.typography.labelLarge)
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                val modes = listOf(InvestmentMode.TOTAL, InvestmentMode.UNIT_COST, InvestmentMode.NONE)
+                val labels = listOf("Total", "X Unidad", "Ninguna")
+                
+                modes.forEachIndexed { index, mode ->
+                    SegmentedButton(
+                        selected = uiState.investmentMode == mode,
+                        onClick = { viewModel.onInvestmentModeChange(mode) },
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
+                        label = { Text(labels[index], style = MaterialTheme.typography.labelSmall) },
+                        colors = SegmentedButtonDefaults.colors(
+                            activeContainerColor = BrandBrown,
+                            activeContentColor = Color.White,
+                            inactiveContentColor = BrandBrown
+                        )
+                    )
+                }
+            }
 
+            Spacer(modifier = Modifier.height(8.dp))
+
+            when (uiState.investmentMode) {
+                InvestmentMode.TOTAL -> {
+                    OutlinedTextField(
+                        value = uiState.totalInvestment,
+                        onValueChange = { if (it.isEmpty() || it.matches(Regex("""^\d*\.?\d*$"""))) viewModel.onTotalInvestmentChange(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Inversión Total") },
+                        prefix = { Text("S/ ") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true
+                    )
+                }
+                InvestmentMode.UNIT_COST -> {
+                    OutlinedTextField(
+                        value = uiState.unitCost,
+                        onValueChange = { if (it.isEmpty() || it.matches(Regex("""^\d*\.?\d*$"""))) viewModel.onUnitCostChange(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Costo de Compra x ${uiState.unit.label}") },
+                        prefix = { Text("S/ ") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true
+                    )
+                }
+                InvestmentMode.NONE -> {
+                    Text(
+                        "No se registrará costo de inversión para este producto.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
             Text("Subir Imagen", style = MaterialTheme.typography.labelLarge)
             Box(
                 modifier = Modifier
@@ -222,7 +351,7 @@ fun ProductFormScreen(
                     .clip(RoundedCornerShape(12.dp))
                     .border(1.dp, TextSecondary, RoundedCornerShape(12.dp))
                     .background(Color.White)
-                    .clickable { imagePicker.launch("image/*") },
+                    .clickable { showImageSourceDialog = true },
                 contentAlignment = Alignment.Center
             ) {
                 if (uiState.imageUri != null) {

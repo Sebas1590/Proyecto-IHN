@@ -103,7 +103,16 @@ private fun MainScaffold(container: AppContainer) {
                 HomeScreen(
                     viewModel = vm,
                     onRegisterSale = { navController.navigate(Routes.REGISTER_SALE) },
-                    onAddProduct = { navController.navigate(Routes.PRODUCT_ADD) }
+                    onAddProduct = { navController.navigate(Routes.PRODUCT_ADD) },
+                    onNavigateToEarnings = {
+                        navController.navigate(Routes.EARNINGS) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
                 )
             }
             composable(Routes.PRODUCTS) {

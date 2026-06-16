@@ -14,13 +14,13 @@ interface SaleDao {
     @Query(
         """
         SELECT COUNT(*) as salesCount, 
-               SUM(totalAmount) as income, 
-               SUM(profitAmount) as profit 
+               TOTAL(totalAmount) as income, 
+               TOTAL(profitAmount) as profit 
         FROM sales 
         WHERE soldAtMillis >= :startOfDay AND soldAtMillis <= :endOfDay
         """
     )
-    fun observeDailyTotals(startOfDay: Long, endOfDay: Long): Flow<DailyTotalsRow?>
+    fun observeDailyTotals(startOfDay: Long, endOfDay: Long): Flow<DailyTotalsRow>
 
     @Query(
         """

@@ -4,7 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inventory2
-import androidx.compose.material.icons.filled.AccessibilityNew
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -17,5 +17,5 @@ enum class BottomNavItem(
     PRODUCTS(Routes.PRODUCTS, "Productos", Icons.Default.Inventory2),
     SALES(Routes.SALES, "Ventas", Icons.Default.Receipt),
     EARNINGS(Routes.EARNINGS, "Ganancias", Icons.Default.AttachMoney),
-    ACCESSIBILITY(Routes.ACCESSIBILITY, "Accesibilidad", Icons.Default.AccessibilityNew)
+    ACCESSIBILITY(Routes.ACCESSIBILITY, "Perfil", Icons.Default.Person)
 }

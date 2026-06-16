@@ -27,9 +27,9 @@ class SaleRepositoryImpl(
             DateTimeUtils.endOfDayMillis()
         ).map { row ->
             DashboardSummary(
-                salesCountToday = row?.salesCount ?: 0,
-                incomeToday = row?.income ?: 0.0,
-                netProfitToday = row?.profit ?: 0.0
+                salesCountToday = row.salesCount,
+                incomeToday = row.income ?: 0.0,
+                netProfitToday = row.profit ?: 0.0
             )
         }
 
