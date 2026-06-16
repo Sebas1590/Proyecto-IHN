@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.practica_desarrollomovil.domain.model.Product
 import com.example.practica_desarrollomovil.domain.model.ProductUnit
 import com.example.practica_desarrollomovil.domain.repository.ProductRepository
+import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -104,6 +105,14 @@ class ProductFormViewModel(
         }
         if (price < 0) {
             _uiState.update { it.copy(errorMessage = "Precio inválido") }
+            return
+        }
+
+        val totalRevenue = price * stock
+        if (finalInvestment > totalRevenue) {
+            _uiState.update { 
+                it.copy(errorMessage = "La inversión no puede ser mayor a la venta proyectada (S/ ${String.format(Locale.getDefault(), "%.2f", totalRevenue)})")
+            }
             return
         }
 
