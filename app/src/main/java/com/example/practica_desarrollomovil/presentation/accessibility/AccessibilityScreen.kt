@@ -38,6 +38,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.text.style.TextAlign
 import com.example.practica_desarrollomovil.data.local.preferences.AccessibilityPreferences
 import com.example.practica_desarrollomovil.domain.model.AccessibilitySettings
 import com.example.practica_desarrollomovil.domain.model.AccessibilityTool
@@ -227,8 +228,7 @@ private fun AccessibilityToolCard(
                     Text(
                         text = tool.talkBackDescription,
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary,
-                        maxLines = 1
+                        color = TextSecondary
                     )
                 }
             }
@@ -243,7 +243,8 @@ private fun AccessibilityToolCard(
                 text = "Toca para aumentar el nivel (Ciclo: 0-${AccessibilityPreferences.MAX_LEVEL})",
                 style = MaterialTheme.typography.labelSmall,
                 color = TextSecondary.copy(alpha = 0.7f),
-                modifier = Modifier.align(Alignment.End)
+                modifier = Modifier.align(Alignment.End),
+                textAlign = TextAlign.End
             )
         }
     }

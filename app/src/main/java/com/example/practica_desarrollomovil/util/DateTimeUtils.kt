@@ -64,6 +64,16 @@ object DateTimeUtils {
 
     fun todayDateShort(): String = formatDateShort(System.currentTimeMillis())
 
+    fun formatMonthName(millis: Long): String {
+        val format = SimpleDateFormat("MMMM", locale)
+        return format.format(Date(millis)).replaceFirstChar { it.uppercase() }
+    }
+
+    fun formatDateRange(start: Long, end: Long): String {
+        val format = SimpleDateFormat("dd/MM", locale)
+        return "Desde ${format.format(Date(start))} al ${format.format(Date(end))}"
+    }
+
     fun startOfDayMillisFor(dateMillis: Long): Long {
         val cal = Calendar.getInstance()
         cal.timeInMillis = dateMillis
